@@ -12,7 +12,9 @@ namespace MazeClient.Model
 
         public override string ToString()
         {
-            return $"PMA:{PossibleMoveActions}, CCSH:{CanCollectScoreHere}, CEMH:{CanExitMazeHere}, CSIH:{CurrentScoreInHand}, CSIB: {CurrentScoreInBag}";
+            return $"PMA:{PossibleMoveActions}, CCSH:{CanCollectScoreHere}, " +
+                $"CEMH:{CanExitMazeHere}, CSIH:{CurrentScoreInHand}, " +
+                $"CSIB: {CurrentScoreInBag}";
         }
     }
 }

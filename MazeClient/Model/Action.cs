@@ -16,7 +16,9 @@
 
         public string ToStr()
         {
-            return $"D:{Direction}, IS:{IsStart}, AE:{AllowsExit}, ASC:{AllowsScoreCollection}, HBV:{HasBeenVisited}, ROD:{RewardOnDestination}";
+            return $"D:{Direction}, IS:{IsStart}, AE:{AllowsExit}, " +
+                $"ASC:{AllowsScoreCollection}, HBV:{HasBeenVisited}, " +
+                $"ROD:{RewardOnDestination}";
         }
     }
 }

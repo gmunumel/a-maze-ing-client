@@ -6,6 +6,8 @@ using MazeClient.Enum;
 using MazeClient.Model;
 using Action = MazeClient.Model.Action;
 using System.Linq;
+using static MazeClient.MazeTree;
+using MazeClient.Extension;
 
 namespace MazeClient
 {
@@ -52,7 +54,9 @@ namespace MazeClient
 
             foreach(Maze newMaze in mazes)
             {
-                Console.WriteLine($"Maze name: {newMaze.Name}, Total Tiles: {newMaze.TotalTiles}, Potential Reward: {newMaze.PotentialReward}");
+                Console.WriteLine($"Maze name: {newMaze.Name}, " +
+                    $"Total Tiles: {newMaze.TotalTiles}, " +
+                    $"Potential Reward: {newMaze.PotentialReward}");
 
                 await PlayMaze(newMaze);
             }
@@ -71,7 +75,8 @@ namespace MazeClient
             int scoreInHand = 0;
             string tile, move = string.Empty;
 
-            List<Navigation> nav = new List<Navigation>();
+            Node root = null;
+            MazeTree tree = new MazeTree();
 
             PossibleActions action = await apiCall.EnterMaze(maze.Name); ;
             if (action != null && action.PossibleMoveActions.Count == 0)
@@ -80,11 +85,12 @@ namespace MazeClient
                 return;
             }
 
-            tile = GetTile(action, scoreInHand);
-            PrintTile(action, tile);
+            tile = "S";
+            action.PrintTile(tile);
 
-            nav.Add(new Navigation { Tile = tile, HereNow = true, Actions = action.PossibleMoveActions });
-            PrintAll(nav);
+            root = tree.Insert(root, new string[] { "S" }, new bool?[] { false });
+            Dictionary<string, bool?> infoTiles = action.PossibleMoveActions.GetInfoInOrder();
+            root = tree.Insert(root, infoTiles.Keys.ToArray(), infoTiles.Values.ToArray());
 
             while (true)
             {
@@ -124,29 +130,31 @@ namespace MazeClient
 
                 scoreInHand += action.CurrentScoreInHand;
 
-                tile = GetTile(action, scoreInHand);
-                PrintTile(action, tile);
+                tile = action.GetTile(action, scoreInHand);
+                action.PrintTile(tile);
 
-                nav.Add(new Navigation { Tile = tile, HereNow = true, Actions = action.PossibleMoveActions });
-                PrintAll(nav);
+
+                
+                //PrintAll(nav);
 
                 Thread.Sleep(2000);
 
             }
         }
 
-        private static void UpdateNavigation(List<Navigation> nav, string move)
-        {
-            foreach(Navigation n in nav)
-            {
-                if (n.HereNow)
-                {
-                    n.HereNow = false;
-                    n.Actions.FirstOrDefault(x => string.Compare(x.Direction, move) == 0).HasBeenVisited = true;
-                    break;
-                }
-            }
-        }
+        //private static void UpdateNavigation(List<Navigation> nav, string move)
+        //{
+        //    foreach(Navigation n in nav)
+        //    {
+        //        if (n.HereNow)
+        //        {
+        //            n.HereNow = false;
+        //            n.Actions.FirstOrDefault(x => string.Compare(x.Direction, move) == 0)
+        //                .HasBeenVisited = true;
+        //            break;
+        //        }
+        //    }
+        //}
 
         private static string GetNextMove(PossibleActions action, string move)
         {
@@ -205,7 +213,8 @@ namespace MazeClient
                 if (action.PossibleMoveActions.Count > 1)
                 {
                     Random rnd = new Random();
-                    result = action.PossibleMoveActions[rnd.Next(action.PossibleMoveActions.Count - 1)].Direction;
+                    result = action.PossibleMoveActions[
+                        rnd.Next(action.PossibleMoveActions.Count - 1)].Direction;
                 }
                 else
                 {
@@ -223,97 +232,17 @@ namespace MazeClient
             return result;
         }
 
-        private static string GetTile(PossibleActions action, int scoreInHand)
-        {
-            string c;
+        
 
-            if (action.CanCollectScoreHere)
-            {
-                c = TileEnum.C.ToString();
-            }
-            else if (action.CanExitMazeHere)
-            {
-                c = TileEnum.E.ToString();
-            }
-            else if (action.CurrentScoreInHand == scoreInHand)
-            {
-                c = TileEnum.x.ToString();
-            }
-            else
-            {
-                c = TileEnum.o.ToString();
-            }
+        
 
-            return c;
-        }
-
-        private static void PrintTile(PossibleActions action, string tile)
-        {
-            bool isRightSelected = false;
-            bool isUpSelected = false;
-            bool isLeftSelected = false;
-            bool isDownSelected = false;
-
-            string result = string.Empty;
-
-            foreach (Action nextAction in action.PossibleMoveActions)
-            {
-                if (string.Compare(nextAction.Direction, MoveEnum.Right.ToString()) == 0)
-                {
-                    isRightSelected = true;
-                }
-
-                if (string.Compare(nextAction.Direction, MoveEnum.Up.ToString()) == 0)
-                {
-                    isUpSelected = true;
-                }
-
-                if (string.Compare(nextAction.Direction, MoveEnum.Left.ToString()) == 0)
-                {
-                    isLeftSelected = true;
-                }
-
-                if (string.Compare(nextAction.Direction, MoveEnum.Down.ToString()) == 0)
-                {
-                    isDownSelected = true;
-                }
-            }
-
-            if (isUpSelected)
-            {
-                result += " |\n";
-            }
-
-            if (isLeftSelected && isRightSelected)
-            {
-                result += $"-{tile}-\n";
-            }
-
-            if (isLeftSelected && !isRightSelected)
-            {
-                result += $"-{tile}\n";
-            }
-
-            if (!isLeftSelected && !isRightSelected)
-            {
-                result += $" {tile}-\n";
-            }
-
-            if (isDownSelected)
-            {
-                result += " |\n";
-            }
-
-            Console.WriteLine(result);
-        }
-
-        private static void PrintAll(List<Navigation> nav)
-        {
-            foreach(Navigation n in nav)
-            {
-                Console.WriteLine(n);
-            }
-        }
+        //private static void PrintAll(List<Navigation> nav)
+        //{
+        //    foreach(Navigation n in nav)
+        //    {
+        //        Console.WriteLine(n);
+        //    }
+        //}
         #endregion
     }
 }
