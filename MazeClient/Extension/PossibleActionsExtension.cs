@@ -8,7 +8,8 @@ namespace MazeClient.Extension
 {
     public static class PossibleActionsExtension
     {
-        public static Dictionary<string, bool?> GetInfoInOrder(this List<Action> possibleMoveActions)
+        public static Dictionary<string, bool?> GetInfoInOrder(
+            this List<Action> possibleMoveActions)
         {
             Dictionary<string, bool?> result = new Dictionary<string, bool?>();
             string[] tiles = new string[4] { null, null, null, null };
@@ -83,7 +84,7 @@ namespace MazeClient.Extension
             return result;
         }
 
-        public static void PrintTile(this PossibleActions action, string tile)
+        public static void PrintTileDirections(this PossibleActions action, string tile)
         {
             bool isRightSelected = false;
             bool isUpSelected = false;
@@ -94,22 +95,26 @@ namespace MazeClient.Extension
 
             foreach (Action nextAction in action.PossibleMoveActions)
             {
-                if (string.Compare(nextAction.Direction, MoveEnum.Right.ToString()) == 0)
+                if (string.Compare(nextAction.Direction,
+                    MoveEnum.Right.ToString()) == 0)
                 {
                     isRightSelected = true;
                 }
 
-                if (string.Compare(nextAction.Direction, MoveEnum.Up.ToString()) == 0)
+                if (string.Compare(nextAction.Direction,
+                    MoveEnum.Up.ToString()) == 0)
                 {
                     isUpSelected = true;
                 }
 
-                if (string.Compare(nextAction.Direction, MoveEnum.Left.ToString()) == 0)
+                if (string.Compare(nextAction.Direction,
+                    MoveEnum.Left.ToString()) == 0)
                 {
                     isLeftSelected = true;
                 }
 
-                if (string.Compare(nextAction.Direction, MoveEnum.Down.ToString()) == 0)
+                if (string.Compare(nextAction.Direction,
+                    MoveEnum.Down.ToString()) == 0)
                 {
                     isDownSelected = true;
                 }
@@ -130,7 +135,7 @@ namespace MazeClient.Extension
                 result += $"-{tile}\n";
             }
 
-            if (!isLeftSelected && !isRightSelected)
+            if (!isLeftSelected && isRightSelected)
             {
                 result += $" {tile}-\n";
             }

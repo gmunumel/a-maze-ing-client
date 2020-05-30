@@ -25,7 +25,8 @@ namespace MazeClient
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error: fatal error to connect to API {e.Message}");
+                Console.WriteLine($"Error: fatal error to connect " +
+                    $"to API {e.Message}");
             }
         }
 
@@ -72,10 +73,12 @@ namespace MazeClient
         #region Private methods
         private static async Task PlayMaze(Maze maze)
         {
-            int scoreInHand = 0;
+            //int scoreInHand = 0;
             string tile, move = string.Empty;
+            MoveEnum direction = MoveEnum.Down;
+            Dictionary<string, bool?> infoTiles;
 
-            Node root = null;
+            Node root = null, current = null;
             MazeTree tree = new MazeTree();
 
             PossibleActions action = await apiCall.EnterMaze(maze.Name); ;
@@ -86,11 +89,13 @@ namespace MazeClient
             }
 
             tile = "S";
-            action.PrintTile(tile);
+            action.PrintTileDirections(tile);
 
-            root = tree.Insert(root, new string[] { "S" }, new bool?[] { false });
-            Dictionary<string, bool?> infoTiles = action.PossibleMoveActions.GetInfoInOrder();
-            root = tree.Insert(root, infoTiles.Keys.ToArray(), infoTiles.Values.ToArray());
+            root = tree.Insert(root, new string[] { tile }, new bool?[] { false });
+            infoTiles = action.PossibleMoveActions.GetInfoInOrder();
+            root = tree.Insert(root, infoTiles.Keys.ToArray(),
+                infoTiles.Values.ToArray());
+            current = root;
 
             while (true)
             {
@@ -101,7 +106,8 @@ namespace MazeClient
                     bool isCollected = await apiCall.CollectScore();
                     if (!isCollected)
                     {
-                        Console.WriteLine($"Error: cannot collect score in maze {maze.Name}");
+                        Console.WriteLine($"Error: cannot collect score " +
+                            $"in maze {maze.Name}");
                         break;
                     }
                 }
@@ -116,10 +122,9 @@ namespace MazeClient
                     }
                     break;
                 }
-
-                move = GetNextMove(action, move);
-
-                UpdateNavigation(nav, move);
+                  
+                move = GetNextMove(action, current, out tile, out direction);
+                Console.WriteLine($"\nmove: {move}\n");
 
                 action = await apiCall.NextMove(move);
                 if (action.PossibleMoveActions.Count == 0)
@@ -128,42 +133,47 @@ namespace MazeClient
                     break;
                 }
 
-                scoreInHand += action.CurrentScoreInHand;
+                action.PrintTileDirections(tile);
+                current = tree.Move(root, move, direction);
 
-                tile = action.GetTile(action, scoreInHand);
-                action.PrintTile(tile);
+                if (direction.CompareTo(MoveEnum.Down) == 0)
+                {
+                    infoTiles = action.PossibleMoveActions.GetInfoInOrder();
+                    if (string.Compare(move, MoveEnum.Right.ToString()) == 0)
+                        root.Right = tree.Insert(root.Right, infoTiles.Keys.ToArray(),
+                            infoTiles.Values.ToArray());
 
+                    if (string.Compare(move, MoveEnum.Up.ToString()) == 0)
+                        root.Up = tree.Insert(root.Up, infoTiles.Keys.ToArray(),
+                            infoTiles.Values.ToArray());
 
-                
-                //PrintAll(nav);
+                    if (string.Compare(move, MoveEnum.Left.ToString()) == 0)
+                        root.Left = tree.Insert(root.Left, infoTiles.Keys.ToArray(),
+                            infoTiles.Values.ToArray());
+
+                    if (string.Compare(move, MoveEnum.Down.ToString()) == 0)
+                        root.Down = tree.Insert(root.Down, infoTiles.Keys.ToArray(),
+                            infoTiles.Values.ToArray());
+                }
 
                 Thread.Sleep(2000);
 
             }
         }
 
-        //private static void UpdateNavigation(List<Navigation> nav, string move)
-        //{
-        //    foreach(Navigation n in nav)
-        //    {
-        //        if (n.HereNow)
-        //        {
-        //            n.HereNow = false;
-        //            n.Actions.FirstOrDefault(x => string.Compare(x.Direction, move) == 0)
-        //                .HasBeenVisited = true;
-        //            break;
-        //        }
-        //    }
-        //}
-
-        private static string GetNextMove(PossibleActions action, string move)
+        private static string GetNextMove(PossibleActions action, Node current,
+            out string tile, out MoveEnum direction)
         {
-            string result = move;
+            string result = string.Empty,
+                tileRight = string.Empty, tileUp = string.Empty,
+                tileLeft = string.Empty, tileDown = string.Empty;
 
             bool isRightAvailable = false, isUpAvailable = false,
                 isLeftAvailable = false, isDownAvailable = false,
                 isRightRepeated = false, isUpRepeated = false,
                 isLeftRepeated = false, isDownRepeated = false;
+
+            tile = string.Empty;
 
             foreach (Action nextAction in action.PossibleMoveActions)
             {
@@ -173,6 +183,8 @@ namespace MazeClient
                         isRightAvailable = true;
                     else
                         isRightRepeated = true;
+
+                    tileRight = GetTile(nextAction);
                 }
 
                 if (string.Compare(nextAction.Direction, MoveEnum.Up.ToString()) == 0)
@@ -181,6 +193,8 @@ namespace MazeClient
                         isUpAvailable = true;
                     else
                         isUpRepeated = true;
+
+                    tileUp = GetTile(nextAction);
                 }
 
                 if (string.Compare(nextAction.Direction, MoveEnum.Left.ToString()) == 0)
@@ -189,6 +203,8 @@ namespace MazeClient
                         isLeftAvailable = true;
                     else
                         isLeftRepeated = true;
+
+                    tileLeft = GetTile(nextAction);
                 }
 
                 if (string.Compare(nextAction.Direction, MoveEnum.Down.ToString()) == 0)
@@ -197,52 +213,74 @@ namespace MazeClient
                         isDownAvailable = true;
                     else
                         isDownRepeated = true;
+
+                    tileDown = GetTile(nextAction);
                 }
             }
 
             if (isRightAvailable)
+            {
                 result = MoveEnum.Right.ToString();
+                tile = tileRight;
+            }
             else if (isUpAvailable)
+            {
                 result = MoveEnum.Up.ToString();
+                tile = tileUp;
+            }
             else if (isLeftAvailable)
+            {
                 result = MoveEnum.Left.ToString();
+                tile = tileLeft;
+            }
             else if (isDownAvailable)
+            {
                 result = MoveEnum.Down.ToString();
+                tile = tileDown;
+            }
             else
             {
-                if (action.PossibleMoveActions.Count > 1)
-                {
-                    Random rnd = new Random();
-                    result = action.PossibleMoveActions[
-                        rnd.Next(action.PossibleMoveActions.Count - 1)].Direction;
-                }
-                else
-                {
-                    if (isDownRepeated)
-                        result = MoveEnum.Down.ToString();
-                    else if (isLeftRepeated)
-                        result = MoveEnum.Left.ToString();
-                    else if (isUpRepeated)
-                        result = MoveEnum.Up.ToString();
-                    else if (isRightRepeated)
-                        result = MoveEnum.Right.ToString();
-                }
+                //TODO
+
+                //if (action.PossibleMoveActions.Count > 1)
+                //{
+                //    Random rnd = new Random();
+                //    result = action.PossibleMoveActions[
+                //        rnd.Next(action.PossibleMoveActions.Count - 1)].Direction;
+                //}
+                //else
+                //{
+                //    if (isDownRepeated)
+                //        result = MoveEnum.Down.ToString();
+                //    else if (isLeftRepeated)
+                //        result = MoveEnum.Left.ToString();
+                //    else if (isUpRepeated)
+                //        result = MoveEnum.Up.ToString();
+                //    else if (isRightRepeated)
+                //        result = MoveEnum.Right.ToString();
+                //}
             }
 
             return result;
         }
 
-        
+        private static string GetTile(Action action)
+        {
+            string result;
 
-        
+            if (action.IsStart)
+                result = TileEnum.S.ToString();
+            else if (action.AllowsExit)
+                result = TileEnum.E.ToString();
+            else if (action.AllowsScoreCollection)
+                result = TileEnum.C.ToString();
+            else if (action.RewardOnDestination > 0)
+                result = TileEnum.o.ToString();
+            else
+                result = TileEnum.x.ToString();
 
-        //private static void PrintAll(List<Navigation> nav)
-        //{
-        //    foreach(Navigation n in nav)
-        //    {
-        //        Console.WriteLine(n);
-        //    }
-        //}
+            return result;
+        }
         #endregion
     }
 }
