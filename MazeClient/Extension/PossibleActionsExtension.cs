@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using MazeClient.Enum;
 using MazeClient.Model;
 using Action = MazeClient.Model.Action;
@@ -62,6 +61,11 @@ namespace MazeClient.Extension
             if (!isLeftSelected && isRightSelected)
             {
                 result += $" {tile}-\n";
+            }
+
+            if (!isLeftSelected && !isRightSelected)
+            {
+                result += $" {tile}\n";
             }
 
             if (isDownSelected)

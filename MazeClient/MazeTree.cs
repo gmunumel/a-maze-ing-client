@@ -47,6 +47,21 @@ public class MazeTree
 		return Current;
 	}
 
+	public Node GetParent()
+	{
+		return Current.Parent;
+	}
+
+	public void SetCurrent(Node current)
+    {
+		Current = current;
+    }
+
+	public void SetVisited(bool visited)
+    {
+		Current.Visited = visited;
+    }
+
 	public MazeTree GetTree()
 	{
 		return Tree;
@@ -62,22 +77,22 @@ public class MazeTree
 		else
 		{
 			root.Visited = true;
-			if (direction.CompareTo("Right") == 0)
+			if (direction.CompareTo(MoveEnum.Right) == 0)
 			{
 				root.Right = new Node(tile, direction, visited, root);
 			}
 
-			if (direction.CompareTo("Up") == 0)
+			if (direction.CompareTo(MoveEnum.Up) == 0)
 			{
 				root.Up = new Node(tile, direction, visited, root);
 			}
 
-			if (direction.CompareTo("Left") == 0)
+			if (direction.CompareTo(MoveEnum.Left) == 0)
 			{
 				root.Left = new Node(tile, direction, visited, root);
 			}
 
-			if (direction.CompareTo("Down") == 0)
+			if (direction.CompareTo(MoveEnum.Down) == 0)
 			{
 				root.Down = new Node(tile, direction, visited, root);
 			}
@@ -153,7 +168,7 @@ public class MazeTree
 		}
 	}
 
-	public List<string> FindShortestPath(Node current, string tile, List<List<string>> pathAcc)
+	public List<string> FindShortestPath(Node root, Node current, string tile)
 	{
 		List<string> result = new List<string>();
 
@@ -164,6 +179,11 @@ public class MazeTree
 
 		if (currentPath.Count > 3)
 		{
+			List<string> path = new List<string>();
+			List<List<string>> pathAcc = new List<List<string>>();
+			GetPaths(root, path, ref pathAcc);
+			PrintPaths(pathAcc);
+
 			pathAcc.RemoveAll(x => !x.Contains(tile));
 
 			Dictionary<string, int> counts = GetPathsCounts(pathAcc, currentPath, tile);
@@ -171,17 +191,55 @@ public class MazeTree
 			List<KeyValuePair<string, int>> listSorted = counts.ToList();
 			listSorted.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
 
-			List<string> path = listSorted.First().Key.Split(',').ToList();
+			path = listSorted.First().Key.Split(',').ToList();
 			//string currentPathStr = String.Join(",", currentPath);
 
 			//Console.WriteLine("path: " + string.Join(",", path));
 			//Console.WriteLine("currentPath: " + string.Join(",", currentPath));
 
 			result = RemoveSimilar(currentPath, path, tile);
+
+			List<string> r = string.Join(",", result).Split(',').ToList();
+
+			r.RemoveAll(x => string.Compare(x, TileEnum.S.ToString()) == 0
+					|| string.Compare(x, TileEnum.C.ToString()) == 0
+					|| string.Compare(x, TileEnum.E.ToString()) == 0
+					|| string.Compare(x, TileEnum.o.ToString()) == 0
+					|| string.Compare(x, TileEnum.x.ToString()) == 0);
+
+			result = r;
 		}
 
 		return result;
 	}
+
+	public void Move(string move)
+    {
+		if (string.Compare(move, MoveEnum.Right.ToString()) == 0)
+		{
+			Current = Current.Right;
+		}
+
+		if (string.Compare(move, MoveEnum.Up.ToString()) == 0)
+		{
+			Current = Current.Up;
+		}
+
+		if (string.Compare(move, MoveEnum.Left.ToString()) == 0)
+		{
+			Current = Current.Left;
+		}
+
+		if (string.Compare(move, MoveEnum.Down.ToString()) == 0)
+		{
+			Current = Current.Down;
+		}
+
+		if (string.Compare(move, MoveEnum.Parent.ToString()) == 0)
+        {
+			Current = Current.Parent;
+        }
+    }
 
 	public void PrintPaths(List<List<string>> paths)
 	{
@@ -199,7 +257,10 @@ public class MazeTree
 		string currentPathResult = string.Empty;
 		string pathResult = string.Empty;
 
-		if (string.Compare(splitCurrentPath.ToString(), splitPath.ToString()) == 0)
+		//Console.WriteLine("string.Join currentPath): " + string.Join(",", currentPath));
+		//Console.WriteLine("string.Join splitPath): " + string.Join(",", path));
+
+		if (string.Compare(string.Join(",", currentPath), string.Join(",", path)) == 0)
 		{
 			currentPath.Reverse();
 			splitCurrentPath = string.Join(",", currentPath).ToCharArray();
@@ -209,6 +270,8 @@ public class MazeTree
 				if (splitCurrentPath[i] == Convert.ToChar(tile))
 					break;
 			}
+
+			currentPathResult = ConvertToParent(currentPathResult);
 		}
 		else
 		{
@@ -229,6 +292,8 @@ public class MazeTree
 				{
 					currentPathResult += splitCurrentPath[i];
 				}
+
+				currentPathResult = ConvertToParent(currentPathResult);
 			}
 
 			//Console.WriteLine("index: " + index + " splitPath.Length: " + splitPath.Length);
@@ -250,6 +315,31 @@ public class MazeTree
 
 		if (!string.IsNullOrEmpty(pathResult))
 			result.Add(pathResult);
+
+		return result;
+	}
+
+	private string ConvertToParent(string path)
+	{
+		string result = string.Empty;
+		string[] joinedString = path.Split(',');
+
+		foreach (string sValue in joinedString)
+		{
+			string toAdd = sValue;
+
+			if (string.Compare(sValue, MoveEnum.Right.ToString()) == 0
+			   || string.Compare(sValue, MoveEnum.Up.ToString()) == 0
+			   || string.Compare(sValue, MoveEnum.Left.ToString()) == 0
+			   || string.Compare(sValue, MoveEnum.Down.ToString()) == 0)
+				toAdd = MoveEnum.Parent.ToString();
+
+			result += toAdd;
+			result += ",";
+		}
+
+		if (string.Compare(result.Substring(result.Length - 1, 1), ",") == 0)
+			result = result.Remove(result.Length - 1, 1);
 
 		return result;
 	}
@@ -365,12 +455,7 @@ public class MazeTree
 		
 	Console.WriteLine("Paths");
 		
-	List<string> path = new List<string>();
-	List<List<string>> pathAcc = new List<List<string>>();
-	bst.GetPaths(root, path, ref pathAcc);
-	bst.PrintPaths(pathAcc);	
-		
-	List<string> shtPath = bst.FindShortestPath(current, "C", pathAcc);
+	List<string> shtPath = bst.FindShortestPath(root, current, "C");
 		
 	Console.WriteLine("sth path: " + String.Join(",", shtPath));
 	*/
@@ -389,12 +474,7 @@ public class MazeTree
 
 	current = bst.GetCurrent().Right;
 
-	List<string> path = new List<string>();
-	List<List<string>> pathAcc = new List<List<string>>();
-	bst.GetPaths(root, path, ref pathAcc);
-	bst.PrintPaths(pathAcc);
-
-	List<string> shtPath = bst.FindShortestPath(current, "C", pathAcc);
+	List<string> shtPath = bst.FindShortestPath(root, current, "C");
 
 	Console.WriteLine("sth path: " + String.Join(",", shtPath));
 	*/

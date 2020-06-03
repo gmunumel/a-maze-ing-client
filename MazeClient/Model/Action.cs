@@ -21,10 +21,4 @@
                 $"ROD:{RewardOnDestination}";
         }
     }
-
-    public class InfoActionOrder
-    {
-        public string Tile { get; set; }
-        public bool? Visited { get; set; }
-    }
 }
