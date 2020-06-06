@@ -48,8 +48,8 @@
     <Compile Include="APIEnpoints.cs" />
     <Compile Include="IAPIEnpoints.cs" />
     <Compile Include="Model\Player.cs" />
-    <Compile Include="MazeTree.cs" />
     <Compile Include="Extension\PossibleActionsExtension.cs" />
+    <Compile Include="Enum\DirectionEnum.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Model\" />
