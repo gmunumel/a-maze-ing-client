@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using MazeClient.Enum;
 using MazeClient.Extension;
@@ -31,12 +30,15 @@ namespace MazeClient
 
         private static async Task ExecuteBot()
         {
+            int countCalls, countTotalCalls = 0;
+
             bool isForgotten = await apiCall.ForgetPlayer();
             if (!isForgotten)
             {
                 Console.WriteLine("Error: not forgotten player");
                 return;
             }
+            countTotalCalls++;
 
             bool isRegisted = await apiCall.RegisterPlayer("Gabriel");
             if (!isRegisted)
@@ -44,6 +46,7 @@ namespace MazeClient
                 Console.WriteLine("Error: not registered player");
                 return;
             }
+            countTotalCalls++;
 
             List<Maze> mazes = await apiCall.GetAllMazes();
             if (mazes.Count == 0)
@@ -51,41 +54,26 @@ namespace MazeClient
                 Console.WriteLine("Error: not mazes found");
                 return;
             }
+            countTotalCalls++;
 
-            int countCalls, countTotalCalls = 0;
+            foreach (Maze newMaze in mazes)
+            {
+                //Maze maze = mazes.First(m => string.Compare(m.Name, "Loops") == 0);
 
-            //foreach (Maze newMaze in mazes)
-            //{
+                countCalls = await PlayMaze(/*maze*/newMaze);
 
-
-                //Console.WriteLine($"Maze name: {newMaze.Name}, " +
-                //    $"Total Tiles: {newMaze.TotalTiles}, " +
-                //    $"Potential Reward: {newMaze.PotentialReward}");
-
-                //Maze m = new Maze()
-                //{
-                //    Name = "test",
-                //    PotentialReward = 100,
-                //    TotalTiles = 4,
-                //};
-
-                Maze maze = mazes.First(m => string.Compare(m.Name, "Loops") == 0);
-
-                countCalls = 0;
-
-                countCalls += await PlayMaze(maze/*newMaze*/);
+                Console.WriteLine($"Maze name: {newMaze.Name}, " +
+                    $"Total Tiles: {newMaze.TotalTiles}, " +
+                    $"Potential Reward: {newMaze.PotentialReward}, " +
+                    $"Number of calls: {countCalls}");
 
                 countTotalCalls += countCalls;
+            }
 
-
-        //}
-
-
-        // No more mazes to play with
-
-        Player player = await apiCall.PlayerInfo();
-            Console.WriteLine($"Player {player.Name} - Score: {player.PlayerScore}");
-            Console.WriteLine($"Number of totals calls: {countTotalCalls}");
+            // No more mazes to play with
+            Player player = await apiCall.PlayerInfo();
+                Console.WriteLine($"Player {player.Name} - Score: {player.PlayerScore}");
+                Console.WriteLine($"Number of totals calls: {++countTotalCalls}");
 
             return;
         }
@@ -94,17 +82,10 @@ namespace MazeClient
         private static async Task<int> PlayMaze(Maze maze)
         {
             int countCalls = 0;
-            string tile, move/*, moveTree*/;
-            bool isCollected = false, isCollecting = false,
-                isExiting = false;
+            string tile;
+            bool isCollected = false, isCollecting = false, isExiting = false;
 
-            DirectionEnum direction;
-
-            //MazeTree tree = new MazeTree();
-            //Node current, parent = null;
-
-            List<string> paths = new List<string>(),
-                /*tiles = new List<string>(), */roadMap = new List<string>();
+            List<string> paths = new List<string>(), roadMap = new List<string>();
 
             List<List<string>> pathsToExit = new List<List<string>>();
             List<List<string>> pathsToCollect = new List<List<string>>();
@@ -116,34 +97,13 @@ namespace MazeClient
                 return -1;
             }
             countCalls++;
-            //PossibleActions action = new PossibleActions
-            //{
-            //    PossibleMoveActions = new List<Action>() {
-            //        {
-            //            new Action () {
-            //            Direction = MoveEnum.Right.ToString(),
-            //            IsStart = true, // S
-            //            AllowsExit = false, // E
-            //            AllowsScoreCollection = false,// C
-            //            HasBeenVisited = false,
-            //            RewardOnDestination = 0,
-            //            }
-            //        },
-            //    },
-            //    CanCollectScoreHere = false,
-            //    CanExitMazeHere = false,
-            //    CurrentScoreInHand = 0,
-            //    CurrentScoreInBag = 0
-            //};
-
+            
             tile = TileEnum.S.ToString();
-            action.PrintTileDirections(tile);
+            //action.PrintTileDirections(tile);
 
             paths.Add(tile);
-            //tiles.Add(tile);
 
             while (true)
-            //foreach (PossibleActions actionX in actions)
             {
                 if (action.CanCollectScoreHere &&
                     action.CurrentScoreInHand > 0 &&
@@ -172,29 +132,22 @@ namespace MazeClient
                     break;
                 }
 
-                List<string> temp = CheckCollectOrExit(maze, action, //roadMap,
+                List<string> temp = CheckCollectOrExit(maze, action,
                     pathsToCollect, pathsToExit, isCollected, ref paths,
                     ref isCollecting, ref isExiting);
 
                 if ((isCollecting || isExiting) && temp.Count > 0)
                 {
                     roadMap = temp;
-                    //paths = temp;
-                    //paths.Clear();
-                    //index = 0;
-                    //tiles.Clear();
                 }
 
-                GetNextMove(/*index,*/ action, /*actionX*/ /*tree, current,*/
-                    /*isCollected,*/ /*out tile, */paths, /*tiles,*/ roadMap,
-                    /*pathsToExit, pathsToCollect,*/ out move,
-                    out tile, out direction);
-                //move = paths[paths.Count - 2];
-                //tile = tiles.Last();
-                Console.WriteLine($"\nmove: {move}\n");
-                Console.WriteLine(string.Join(",", paths));
+                GetNextMove(action, paths, roadMap, out string move, out tile,
+                    out DirectionEnum direction);
 
-                action.PrintTileDirections(tile);
+                //Console.WriteLine($"\nmove: {move}\n");
+                //Console.WriteLine(string.Join(",", paths));
+
+                //action.PrintTileDirections(tile);
 
                 if (direction.CompareTo(DirectionEnum.Down) == 0
                    && !isCollected)
@@ -202,26 +155,11 @@ namespace MazeClient
                     AddCollectOrExit(paths, tile, pathsToCollect, pathsToExit);
                 }
 
-                if (direction.CompareTo(DirectionEnum.Up) == 0
-                    /*|| direction.CompareTo(DirectionEnum.Collect) == 0*/)
+                if (direction.CompareTo(DirectionEnum.Up) == 0)
                 {
                     paths.RemoveAt(paths.Count - 1);
                     paths.RemoveAt(paths.Count - 1);
-                    //tiles.RemoveAt(tiles.Count - 1);
                 }
-
-                //actionX.PrintTileDirections(tile);
-                //
-
-                //moveTree = move;
-                //move = string.Compare(move, MoveEnum.Parent.ToString()) != 0
-                //    ? move : ChangeDirection(current);
-
-                //AddingActionsToTree(root, parent, 
-                //    action.PossibleMoveActions,
-                //    /*actionX.PossibleMoveActions,*/ tree);
-                //tree.SetVisited(true);
-                //current = tree.Move(moveTree, root, parent);
 
                 action = await apiCall.NextMove(move);
                 if (action.PossibleMoveActions.Count == 0)
@@ -230,12 +168,6 @@ namespace MazeClient
                     break;
                 }
                 countCalls++;
-                //index += 2;
-
-                //else if (direction.CompareTo(DirectionEnum.Collect) == 0)
-                //{
-
-                //}
 
                 //Thread.Sleep(2000);
             }
@@ -243,81 +175,34 @@ namespace MazeClient
             return countCalls;
         }
 
-        private static void GetNextMove(/*int index,*//*Maze maze, */PossibleActions action,
-
-            /*MazeTree tree, Node node, bool isCollected,*/ //out string tile,
+        private static void GetNextMove(PossibleActions action,
             List<string> paths,
-            //List<string> tiles,
             List<string> roadMap,
-            //List<List<string>> pathsToExit,
-            //List<List<string>> pathsToCollect,
             out string move,
             out string tile,
             out DirectionEnum direction)
         {
-            //string result = string.Empty,
             string tileRight = string.Empty, tileUp = string.Empty,
                    tileLeft = string.Empty, tileDown = string.Empty;
 
             bool isRightAvailable = false, isUpAvailable = false,
                 isLeftAvailable = false, isDownAvailable = false;
 
-            //string tile = string.Empty;
+            bool hasRightReward = false, hasUpReward = false,
+                hasLeftReward = false, hasDownReward = false;
 
             move = string.Empty;
             tile = string.Empty;
 
-            if (roadMap.Count > 2 /*||
-                direction.CompareTo(DirectionEnum.Collect) == 0*/)
+            if (roadMap.Count > 2)
             {
                 direction = DirectionEnum.Collect;
-
-                //if (roadMap.Count == 0)
-                //{
-                //    tiles.Clear();
-                //    tiles.Add(paths[paths.Count - 3]);
-                //}
-                //else
-                //{
-                //    paths.Clear();
-                //    tiles.Clear();
-
-                //    roadMap.Reverse();
-                //    paths = roadMap;
-                //    tiles.Add(paths[paths.Count - 3]);
-
-                //    roadMap.Clear();
-                //}
-
-                //paths.Clear();
-                //tiles.Clear();
 
                 move = roadMap[1];
                 tile = roadMap[2];
 
-                if (string.Compare(tile, TileEnum.S.ToString()) == 0)
-                {
-                    //paths.Clear();
-                    //paths.Add(TileEnum.S.ToString());
-                }
-                else
-                {
-                    //paths.Add(roadMap[1]);
-                    //paths.Add(roadMap[2]);
-                    //paths.Add(roadMap[2]);
-                }
-
                 roadMap.RemoveAt(0);
                 roadMap.RemoveAt(0);
-                //roadMap.RemoveAt(0);
-
-
-                //tiles.Add(roadMap[2]);
-
-                //roadMap.RemoveAt(0);
-                //roadMap.RemoveAt(0);
-
-
 
                 return;
             }
@@ -330,6 +215,7 @@ namespace MazeClient
                 {
                     isRightAvailable = true;
                     tileRight = GetTile(nextAction);
+                    hasRightReward = nextAction.RewardOnDestination > 0;
                 }
 
                 if (string.Compare(nextAction.Direction,
@@ -338,6 +224,7 @@ namespace MazeClient
                 {
                     isUpAvailable = true;
                     tileUp = GetTile(nextAction);
+                    hasUpReward = nextAction.RewardOnDestination > 0;
                 }
 
                 if (string.Compare(nextAction.Direction,
@@ -346,6 +233,7 @@ namespace MazeClient
                 {
                     isLeftAvailable = true;
                     tileLeft = GetTile(nextAction);
+                    hasLeftReward = nextAction.RewardOnDestination > 0;
                 }
 
                 if (string.Compare(nextAction.Direction,
@@ -354,6 +242,7 @@ namespace MazeClient
                 {
                     isDownAvailable = true;
                     tileDown = GetTile(nextAction);
+                    hasDownReward = nextAction.RewardOnDestination > 0;
                 }
             }
 
@@ -362,7 +251,27 @@ namespace MazeClient
             {
                 direction = DirectionEnum.Down;
 
-                if (isRightAvailable)
+                if (isRightAvailable && hasRightReward)
+                {
+                    move = MoveEnum.Right.ToString();
+                    tile = tileRight;
+                }
+                else if (isUpAvailable && hasUpReward)
+                {
+                    move = MoveEnum.Up.ToString();
+                    tile = tileUp;
+                }
+                else if (isLeftAvailable && hasLeftReward)
+                {
+                    move = MoveEnum.Left.ToString();
+                    tile = tileLeft;
+                }
+                else if (isDownAvailable && hasDownReward)
+                {
+                    move = MoveEnum.Down.ToString();
+                    tile = tileDown;
+                }
+                else if (isRightAvailable)
                 {
                     move = MoveEnum.Right.ToString();
                     tile = tileRight;
@@ -385,7 +294,6 @@ namespace MazeClient
 
                 paths.Add(move);
                 paths.Add(tile);
-                //tiles.Add(tile);
             }
             else
             {
@@ -396,7 +304,6 @@ namespace MazeClient
 
                 paths.RemoveAt(paths.Count - 1);
                 paths.RemoveAt(paths.Count - 1);
-                //tiles.RemoveAt(tiles.Count - 1);
 
                 string changedPath = ChangeDirection(moveTemp);
 
@@ -405,17 +312,7 @@ namespace MazeClient
 
                 tile = paths[paths.Count - 1];
                 move = paths[paths.Count - 2];
-
-                //Node parent = node.Parent;
-
-                //if (parent != null)
-                //{
-                //    result = MoveEnum.Parent.ToString();
-                //    tile = parent.Tile.ToString();
-                //}
             }
-
-            //return result;
         }
 
         private static void AddCollectOrExit(List<string> paths,
@@ -423,7 +320,6 @@ namespace MazeClient
             List<List<string>> pathsToCollect,
             List<List<string>> pathsToExit)
         {
-            //string tile = tiles.Last();
             bool isEqual = false;
 
             if (string.Compare(tile, TileEnum.C.ToString()) == 0)
@@ -464,7 +360,6 @@ namespace MazeClient
 
         private static List<string> CheckCollectOrExit(Maze maze,
             PossibleActions action,
-            //List<string> roadMap,
             List<List<string>> pathsToCollect,
             List<List<string>> pathsToExit,
             bool isCollected,
@@ -473,9 +368,6 @@ namespace MazeClient
             ref bool isExiting)
         {
             List<string> result = new List<string>();
-
-            //isCollecting = false;
-            //isExiting = false;
 
             if (maze.PotentialReward == action.CurrentScoreInHand
                 || maze.PotentialReward == action.CurrentScoreInBag)
@@ -490,153 +382,22 @@ namespace MazeClient
                         isExiting = false;
                         isCollecting = true;
                     }
-
-                    //if (pathToCollect.Count > 0)
-                    //{
-                    //    result = pathToCollect.First();
-                    //    pathToCollect.RemoveAt(0);
-                    //}
                 }
-                else if (/*(!isCollected && isCollecting && roadMap.Count == 3) ||*/
-                    action.CurrentScoreInHand == 0)
+                else if (action.CurrentScoreInHand == 0)
                 {
                     if (!isExiting && pathsToExit.Count > 0)
                     {
                         result = FindShortestPath(pathsToExit,
                             ref paths, TileEnum.E.ToString());
 
-
-
-                        //paths.AddRange(result);
-
-                        //result = paths;
-
                         isCollecting = false;
                         isExiting = true;
                     }
-
-                    //if (pathToExit.Count > 0)
-                    //{
-                    //    result = pathToExit.First();
-                    //    pathToExit.RemoveAt(0);
-                    //}
                 }
-
-                //if (!string.IsNullOrEmpty(result))
-                //{
-                //    Node parent = node.Parent;
-
-                //    if (parent != null)
-                //    {
-                //        tile = parent.Tile.ToString();
-                //        return result;
-                //    }
-                //}
             }
 
             return result;
         }
-
-        /*
-        private static void AddingActionsToTree(Node root,
-            Node parent, 
-            List<Action> possibleMoveActions,
-            MazeTree tree)
-        {
-            TileEnum tile;
-            //Node nodeTemp = null;
-
-            foreach (Action action in possibleMoveActions)
-            {
-                if (action.IsStart)
-                {
-                    tile = TileEnum.S;
-                }
-                else if (action.AllowsScoreCollection)
-                {
-                    tile = TileEnum.C;
-                }
-                else if (action.AllowsExit)
-                {
-                    tile = TileEnum.E;
-                }
-                else if (action.RewardOnDestination > 0)
-                {
-                    tile = TileEnum.o;
-                }
-                else
-                {
-                    tile = TileEnum.x;
-                }
-
-                if (string.Compare(action.Direction, MoveEnum.Right.ToString()) == 0)
-                {
-                    //if (node.Right != null)
-                    //{
-                    //    Node temp = tree.Add(node, MoveEnum.Right, tile);
-
-                    //}
-                    //else
-                    //{
-                    //    tree.Add(node, MoveEnum.Right, tile);
-                    //}
-                    root = tree.Add(root, MoveEnum.Right, tile);                    
-                }
-
-                if (string.Compare(action.Direction, MoveEnum.Up.ToString()) == 0)
-                {
-                    root = tree.Add(root, MoveEnum.Up, tile);
-                }
-
-                if (string.Compare(action.Direction, MoveEnum.Left.ToString()) == 0)
-                {
-                    root = tree.Add(root, MoveEnum.Left, tile);
-                }
-
-                if (string.Compare(action.Direction, MoveEnum.Down.ToString()) == 0)
-                {
-                    root = tree.Add(root, MoveEnum.Down, tile);
-                }
-
-                if (root != null)
-                {
-                    parent = root.Parent;
-                }
-            }
-
-            //return node;
-        }
-        */
-
-        /*
-        private static string ChangeDirection(Node node)
-        {
-            string result = string.Empty;
-            MoveEnum moveEnum = node.ParentMove;
-
-            if (moveEnum.CompareTo(MoveEnum.Right) == 0)
-            {
-                result = MoveEnum.Left.ToString();
-            }
-
-            if (moveEnum.CompareTo(MoveEnum.Up) == 0)
-            {
-                result = MoveEnum.Down.ToString();
-            }
-
-            if (moveEnum.CompareTo(MoveEnum.Left) == 0)
-            {
-                result = MoveEnum.Right.ToString();
-            }
-
-            if (moveEnum.CompareTo(MoveEnum.Down) == 0)
-            {
-                result = MoveEnum.Up.ToString();
-            }
-
-            return result;
-        }
-        */
 
         private static string ChangeDirection(string path)
         {
@@ -692,16 +453,8 @@ namespace MazeClient
             List<string> result = new List<string>(),
                 path = new List<string>();
 
-            //List<string> currentPath = new List<string>();
-            //Traverse(Root);
-            //TraserveInverse(node, ref currentPath);
-
-            //currentPath.Reverse();
-
             if (currentPath.Count > 2)
             {
-                //PrintPaths(pathAcc);
-
                 pathAcc.RemoveAll(x => !x.Contains(tile));
 
                 Dictionary<string, int> counts = GetPathsCounts(pathAcc, currentPath, tile);
@@ -710,24 +463,10 @@ namespace MazeClient
                 listSorted.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
 
                 path = listSorted.First().Key.Split(',').ToList();
-                //string currentPathStr = String.Join(",", currentPath);
-
-                //Console.WriteLine("path: " + string.Join(",", path));
-                //Console.WriteLine("currentPath: " + string.Join(",", currentPath));
-
+                
                 result = RemoveSimilar(currentPath, path, tile);
 
                 result = string.Join(",", result).Split(',').ToList();
-
-                //List<string> r = string.Join(",", result).Split(',').ToList();
-
-                //r.RemoveAll(x => string.Compare(x, TileEnum.S.ToString()) == 0
-                //        || string.Compare(x, TileEnum.C.ToString()) == 0
-                //        || string.Compare(x, TileEnum.E.ToString()) == 0
-                //        || string.Compare(x, TileEnum.o.ToString()) == 0
-                //        || string.Compare(x, TileEnum.x.ToString()) == 0);
-
-                //result = r;
             }
             else
             {
@@ -760,12 +499,8 @@ namespace MazeClient
             string currentPathResult = string.Empty;
             string pathResult = string.Empty;
 
-            //Console.WriteLine("string.Join currentPath): " + string.Join(",", currentPath));
-            //Console.WriteLine("string.Join splitPath): " + string.Join(",", path));
-
             if (string.Compare(string.Join(",", currentPath), string.Join(",", path)) == 0)
             {
-                //currentPath.Reverse();
                 List<string> reversedCurrentPath = ReverseDeepCopy(currentPath);
                 splitCurrentPath = string.Join(",", reversedCurrentPath).ToCharArray();
                 for (int i = 0; i < splitCurrentPath.Length; i++)
@@ -780,7 +515,6 @@ namespace MazeClient
             else
             {
                 int index = 0;
-                //Console.WriteLine("splitCurrentPath[index]: " + splitCurrentPath[index] + " splitPath[index]: " + splitPath[index]);
                 while (index < splitCurrentPath.Length
                         && index < splitPath.Length
                         && splitCurrentPath[index] == splitPath[index])
@@ -790,7 +524,6 @@ namespace MazeClient
 
                 if (index < splitCurrentPath.Length)
                 {
-                    //currentPath.Reverse();
                     List<string> reversedCurrentPath = ReverseDeepCopy(currentPath);
                     splitCurrentPath = string.Join(",", reversedCurrentPath).ToCharArray();
                     for (int i = 0; i < splitCurrentPath.Length - index; i++)
@@ -806,7 +539,6 @@ namespace MazeClient
                     currentPathResult = ChangeDirection(currentPathResult);
                 }
 
-                //Console.WriteLine("index: " + index + " splitPath.Length: " + splitPath.Length);
                 if (index < splitPath.Length)
                 {
                     pathResult += splitPath[index - 2] == ','
@@ -845,33 +577,6 @@ namespace MazeClient
             return result;
         }
 
-        /*
-        private static string ConvertToParent(string path)
-        {
-            string result = string.Empty;
-            string[] joinedString = path.Split(',');
-
-            foreach (string sValue in joinedString)
-            {
-                string toAdd = sValue;
-
-                if (string.Compare(sValue, MoveEnum.Right.ToString()) == 0
-                   || string.Compare(sValue, MoveEnum.Up.ToString()) == 0
-                   || string.Compare(sValue, MoveEnum.Left.ToString()) == 0
-                   || string.Compare(sValue, MoveEnum.Down.ToString()) == 0)
-                    toAdd = MoveEnum.Parent.ToString();
-
-                result += toAdd;
-                result += ",";
-            }
-
-            if (string.Compare(result.Substring(result.Length - 1, 1), ",") == 0)
-                result = result.Remove(result.Length - 1, 1);
-
-            return result;
-        }
-        */
-
         private static Dictionary<string, int> GetPathsCounts(List<List<string>> pathAcc,
             List<string> currentPath, string tile)
         {
@@ -888,9 +593,6 @@ namespace MazeClient
                 {
                     string smallPath = string.Format("{0}{1}{2}", pathSmallAcc[i], pathSmallAcc[i + 1], pathSmallAcc[i + 2]);
                     string smallCurrentPath = string.Format("{0}{1}{2}", currentPath[i], currentPath[i + 1], currentPath[i + 2]);
-
-                    //Console.WriteLine(smallPath);
-                    //Console.WriteLine(smallCurrentPath);
 
                     if (string.Compare(smallPath, smallCurrentPath) != 0)
                     {
@@ -928,36 +630,7 @@ namespace MazeClient
             return result;
         }
 
-        /*
-        private static string ChangeDirection(string move)
-        {
-            string result = move;
-
-            if (string.Compare(move, MoveEnum.Down.ToString()) == 0)
-            {
-                result = MoveEnum.Up.ToString();
-            }
-
-            if (string.Compare(move, MoveEnum.Up.ToString()) == 0)
-            {
-                result = MoveEnum.Down.ToString();
-            }
-
-            if (string.Compare(move, MoveEnum.Left.ToString()) == 0)
-            {
-                result = MoveEnum.Right.ToString();
-            }
-
-            if (string.Compare(move, MoveEnum.Right.ToString()) == 0)
-            {
-                result = MoveEnum.Left.ToString();
-            }
-
-            return result;
-        }
-        */
-
-        public static void PrintPaths(List<List<string>> paths)
+        private static void PrintPaths(List<List<string>> paths)
         {
             foreach (List<string> path in paths)
                 Console.WriteLine(string.Join(",", path));
