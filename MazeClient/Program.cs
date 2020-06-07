@@ -453,17 +453,51 @@ namespace MazeClient
             List<string> result = new List<string>(),
                 path = new List<string>();
 
+            Dictionary<string, int> counts;
+            List<KeyValuePair<string, int>> listSorted;
+
+            List<List<string>> pathAccTemp = new List<List<string>>(pathAcc);
+
             if (currentPath.Count > 2)
             {
-                pathAcc.RemoveAll(x => !x.Contains(tile));
+                if (string.Compare(tile, TileEnum.C.ToString()) == 0)
+                {
+                    tile = TileEnum.E.ToString();
 
-                Dictionary<string, int> counts = GetPathsCounts(pathAcc, currentPath, tile);
+                    pathAccTemp.RemoveAll(x => !x.Contains(tile));
 
-                List<KeyValuePair<string, int>> listSorted = counts.ToList();
-                listSorted.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
+                    counts = GetPathsCounts(pathAccTemp, currentPath, tile);
 
-                path = listSorted.First().Key.Split(',').ToList();
-                
+                    listSorted = counts.ToList();
+                    listSorted.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
+
+                    foreach (KeyValuePair<string, int> entry in listSorted)
+                    {
+                        if (entry.Key.Contains(TileEnum.C.ToString()))
+                        {
+                            path = entry.Key.Split(',').ToList();
+                            break;
+                        }
+                    }
+
+                    if (path.Count == 0)
+                    {
+                        tile = TileEnum.C.ToString();
+                    }
+                }
+
+                if (path.Count == 0)
+                {
+                    pathAcc.RemoveAll(x => !x.Contains(tile));
+
+                    counts = GetPathsCounts(pathAcc, currentPath, tile);
+
+                    listSorted = counts.ToList();
+                    listSorted.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
+
+                    path = listSorted.First().Key.Split(',').ToList();
+                }
+
                 result = RemoveSimilar(currentPath, path, tile);
 
                 result = string.Join(",", result).Split(',').ToList();
